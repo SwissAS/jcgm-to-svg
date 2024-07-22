@@ -9,13 +9,7 @@ import java.util.List;
 import java.util.Stack;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.apache.batik.svggen.StyleHandler;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.w3c.dom.Element;
-
 import com.jpprade.jcgmtosvg.commands.PolyBezierV2;
-import com.jpprade.jcgmtosvg.extension.MyStyleHandler;
 
 import net.sf.jcgm.core.ApplicationStructureAttribute;
 import net.sf.jcgm.core.BeginApplicationStructure;
@@ -31,255 +25,163 @@ import net.sf.jcgm.core.FillColour;
 import net.sf.jcgm.core.LineColour;
 import net.sf.jcgm.core.LineWidth;
 import net.sf.jcgm.core.PolyBezier;
-import net.sf.jcgm.core.Polyline;
 
 
 public class CGM4SVG extends CGM {
 	
-	SVGPainter painter = null;
+	SVGPainter painter;
 	
-	private BeginApplicationStructure currentAPS = null;
+	private final Stack<BeginApplicationStructure> basStack = new Stack<>();
 	
-	private Stack<BeginApplicationStructure> basStack = new Stack<BeginApplicationStructure>();
+	private final HashMap<BeginApplicationStructure, PaintHolder> mapping = new HashMap<>();
 	
-	private HashMap<BeginApplicationStructure,PaintHolder> mapping = new HashMap<>();
+	private BeginFigure currentFigure = null;
 	
-	private BeginFigure currentFigure =null;
-	 
-	private FillColour currentFC = null;
+	private final ConcurrentHashMap<BeginFigure, List<PolyBezierV2>> figurePolyBezier = new ConcurrentHashMap<>();
 	
-	private EdgeColour currentEC = null;
-	
-	private EdgeWidth currentEW = null;
-	
-	
-	private LineColour currentLC = null;
-	
-	private LineWidth currentLW = null;	
-	
-	private Command lastCommand = null;
-	
-	private boolean hotspotDrawn = false;
-	
-	private static Logger logger = LoggerFactory.getLogger(CGM4SVG.class);	
-	
-	private ConcurrentHashMap<BeginFigure, List<PolyBezierV2>> figurePolyBezier = new ConcurrentHashMap<>();
-
-	private MyStyleHandler styleHandler;
-	
-	boolean handleAPSwithNoviewContext = true;
-	
-	public CGM4SVG(File cgmFile,SVGPainter painter, boolean handleAPSwithNoviewContext) throws IOException {
+	public CGM4SVG(File cgmFile, SVGPainter painter) throws IOException {
 		super(cgmFile);
-		this.painter= painter;
-		this.handleAPSwithNoviewContext=handleAPSwithNoviewContext;
+		this.painter = painter;
 	}
-
+	
 	@Override
-	public void paint(CGMDisplay d) {		
+	public void paint(CGMDisplay d) {
 		for (Command c : getCommands()) {
-				if(c instanceof ApplicationStructureAttribute) {
+			if (c == null) {
+				continue;
+			}
+			
+			BeginApplicationStructure currentAPS;
+			switch (c) {
+				case ApplicationStructureAttribute asa -> {
 					
-					BeginApplicationStructure top = basStack.peek();
+					BeginApplicationStructure top = this.basStack.peek();
 					
-					mapping.get(top).addAPS((ApplicationStructureAttribute)c);
+					this.mapping.get(top).addAPS(asa);
 					
-					ApplicationStructureAttribute regionaps = mapping.get(top).getRegionAPS();
-					if(regionaps!=null) {					
-						painter.paint(regionaps,d,mapping.get(top),getSize());
-						hotspotDrawn=true;
-					}else {
-						ApplicationStructureAttribute vcaps = mapping.get(top).getVCAPS();
-						if(vcaps!=null) {					
-							painter.paint(vcaps,d,mapping.get(top),getSize());
-							hotspotDrawn=true;
+					ApplicationStructureAttribute regionaps = this.mapping.get(top).getRegionAPS();
+					if (regionaps != null) {
+						this.painter.paint(regionaps, d, this.mapping.get(top), getSize());
+					} else {
+						ApplicationStructureAttribute vcaps = this.mapping.get(top).getVCAPS();
+						if (vcaps != null) {
+							this.painter.paint(vcaps, d, this.mapping.get(top), getSize());
 						}
 					}
-				}else if(c instanceof BeginApplicationStructure) {// structure parente					
-					this.currentAPS = (BeginApplicationStructure)c;
-					basStack.add(currentAPS);
+				}
+				case BeginApplicationStructure bas -> {
+					currentAPS = bas;
+					this.basStack.add(currentAPS);
 					PaintHolder ph = new PaintHolder();
-					ph.setApsid(this.currentAPS.getIdentifier());
-					mapping.put(currentAPS, ph);
-					
-					painter.paint((BeginApplicationStructure)c,d,ph);
-					if(currentAPS.getIdentifier()!=null && currentAPS.getIdentifier().startsWith("HOT")) {
-						hotspotDrawn=false;//ICN-JP-A-130100-M-C0418-04982-A-04-1.cgm
-					}else {
-						hotspotDrawn=true;//on n'est pas dans une couche HS
-					}
-					
-				}else if(c instanceof BeginFigure) {
+					ph.setApsid(currentAPS.getIdentifier());
+					this.mapping.put(currentAPS, ph);
+				}
+				case BeginFigure bf -> {
 					c.paint(d);
-					this.currentFigure = (BeginFigure)c;
-					figurePolyBezier.put(currentFigure, new ArrayList<>());
-				}else if(c instanceof EndApplicationStructure) {
-					basStack.pop();
-					
-					if(basStack.empty()) {					
-						this.currentAPS = null;
-						this.currentFC = null;
-						this.currentEC = null;
-						this.currentEW = null;
-						this.currentLC = null;
-						this.currentLW = null;
-					}else {
-						BeginApplicationStructure top = basStack.peek();
-						this.currentAPS = top;
-						this.currentFC = mapping.get(top).getCurrentFC();
-						this.currentEC = mapping.get(top).getCurrentEC();
-						this.currentEW = mapping.get(top).getCurrentEW();
-						this.currentLC = mapping.get(top).getCurrentLC();
-						this.currentLW = mapping.get(top).getCurrentLW();
+					this.currentFigure = bf;
+					this.figurePolyBezier.put(this.currentFigure, new ArrayList<>());
+				}
+				case EndApplicationStructure ignored1 -> {
+					this.basStack.pop();
+					if (!this.basStack.empty()) {
+						this.basStack.peek();
 					}
-				}else if(c instanceof EndFigure) {
-					List<PolyBezierV2> toPaint = figurePolyBezier.get(currentFigure);
+				}
+				case EndFigure ignored2 -> {
+					List<PolyBezierV2> toPaint = this.figurePolyBezier.get(this.currentFigure);
 					
-					if(!toPaint.isEmpty()) {
-						PolyBezierV2 c2 = mergePB(toPaint);					
+					if (!toPaint.isEmpty()) {
+						PolyBezierV2 c2 = mergePB(toPaint);
 						
-						String apsname = null;
-						String apsid = null;
-						if(!basStack.isEmpty()) {
+						if (!this.basStack.isEmpty()) {
+							BeginApplicationStructure top = this.basStack.peek();
 							
-							BeginApplicationStructure top = basStack.peek();						
-							if(hotspotDrawn==false) {
-								apsname = mapping.get(top).getName();
-								apsid = top.getIdentifier();
-							}							
+							c2.paint(d, this.currentFigure,
+									this.mapping.get(top).getCurrentFC(),
+									this.mapping.get(top).getCurrentEC(),
+									this.mapping.get(top).getCurrentEW());
 							
-							c2.paint(d,currentFigure,
-								mapping.get(top).getCurrentFC(),
-								mapping.get(top).getCurrentEC(),
-								mapping.get(top).getCurrentEW(),
-								mapping.get(top).getCurrentLC(),
-								mapping.get(top).getCurrentLW(),apsid,apsname);
-							
-						}else {
-							c2.paint(d,currentFigure);
+						} else {
+							c2.paint(d, this.currentFigure);
 							
 						}
 					}
 					this.currentFigure = null;
-				}else {
-					if(c instanceof PolyBezier) {
-						PolyBezierV2 c2 = new PolyBezierV2((PolyBezier)c);
-						String apsname = null;
-						String apsid = null;
-						if(!basStack.isEmpty()) {
-							
-							BeginApplicationStructure top = basStack.peek();
-							if(hotspotDrawn==false) {
-								apsname = mapping.get(top).getName();
-								apsid = top.getIdentifier();
-							}
-							
-							if(currentFigure==null) {
-								
-								c2.paint(d,currentFigure,
-									mapping.get(top).getCurrentFC(),
-									mapping.get(top).getCurrentEC(),
-									mapping.get(top).getCurrentEW(),
-									mapping.get(top).getCurrentLC(),
-									mapping.get(top).getCurrentLW(),apsid,apsname);
-							}else {
-								figurePolyBezier.get(currentFigure).add(c2);//tous les polybeziers seront mergé en 1 seule shape
-							}
-						}else {
-							if(currentFigure==null) {								
-								c2.paint(d,currentFigure);
-							}else {
-								figurePolyBezier.get(currentFigure).add(c2);
-							}
-						}
-						
-						
-						
-					}else if(c instanceof FillColour) {
-						if(!basStack.isEmpty()) {
-							BeginApplicationStructure top = basStack.peek();						
-							mapping.get(top).setCurrentFC((FillColour)c);
-						}
-						this.currentFC = (FillColour) c;
-						this.lastCommand=c;
-						c.paint(d);
-					}else if(c instanceof EdgeColour) {
-						if(!basStack.isEmpty()) {
-							BeginApplicationStructure top = basStack.peek();						
-							mapping.get(top).setCurrentEC((EdgeColour)c);
-						}
-						this.currentEC = (EdgeColour) c;
-						this.lastCommand=c;
-						c.paint(d);
-					}else if(c instanceof EdgeWidth) {
-						if(!basStack.isEmpty()) {
-							BeginApplicationStructure top = basStack.peek();						
-							mapping.get(top).setCurrentEW((EdgeWidth)c);
-						}
-						this.currentEW = (EdgeWidth) c;
-						this.lastCommand=c;
-						c.paint(d);
-					}else if(c instanceof LineColour) {
-						if(!basStack.isEmpty()) {
-							BeginApplicationStructure top = basStack.peek();						
-							mapping.get(top).setCurrentLC((LineColour)c);
-						}
-						this.currentLC = (LineColour) c;
-						this.lastCommand=c;
-						c.paint(d);
-					}else if(c instanceof LineWidth) {
-						if(!basStack.isEmpty()) {
-							BeginApplicationStructure top = basStack.peek();
-							mapping.get(top).setCurrentLW((LineWidth)c);
-						}
-						this.currentLW = (LineWidth) c;
-						this.lastCommand=c;
-						c.paint(d);
-					}else {						
-						if((c instanceof Polyline)
-								&& !basStack.isEmpty()
-								&& basStack.peek()!=null
-								&& mapping.get(basStack.peek()).getName().startsWith("TDET")								
-								&& mapping.get(basStack.peek()).getRegionAPS()==null 
-								&& mapping.get(basStack.peek()).getVCAPS()==null 
-								&& handleAPSwithNoviewContext) {
-							logger.info("Found TDET APS structure without view context, using the polylione as viewcontext");
-							c.paint(d);
-							Element svgShape = this.styleHandler.getLast();
-							svgShape.setAttributeNS(null, "id", mapping.get(basStack.peek()).getApsid());
-							svgShape.setAttributeNS(null, "apsname", mapping.get(basStack.peek()).getName());
-							svgShape.setAttributeNS(null, "apsid", mapping.get(basStack.peek()).getApsid());
-							/*svgShape.setAttributeNS(null, "fill-rule", "evenodd");
-							svgShape.setAttributeNS(null, "fill", "transparent");
-							svgShape.setAttributeNS(null, "class", "hotspot");
-							svgShape.setAttributeNS(null, "onclick", "clickHS('"+apsId+"')");
-							svgShape.setAttributeNS(null, "stroke-width", "0");*/
-						}else {
-							c.paint(d);
-						}
-						
-					}
-					
 				}
-			
+				// all polybezier will be merged into a single shape
+				default -> {
+					switch (c) {
+						case PolyBezier pb -> {
+							PolyBezierV2 c2 = new PolyBezierV2(pb);
+							if (!this.basStack.isEmpty()) {
+								BeginApplicationStructure top = this.basStack.peek();
+								if (this.currentFigure == null) {
+									c2.paint(d, null,
+											this.mapping.get(top).getCurrentFC(),
+											this.mapping.get(top).getCurrentEC(),
+											this.mapping.get(top).getCurrentEW());
+								} else {
+									this.figurePolyBezier.get(this.currentFigure).add(c2); // all polybezier will be merged into a single shape
+								}
+							} else {
+								if (this.currentFigure == null) {
+									c2.paint(d, null);
+								} else {
+									this.figurePolyBezier.get(this.currentFigure).add(c2);
+								}
+							}
+						}
+						case FillColour fc -> {
+							if (!this.basStack.isEmpty()) {
+								BeginApplicationStructure top = this.basStack.peek();
+								this.mapping.get(top).setCurrentFC(fc);
+							}
+							c.paint(d);
+						}
+						case EdgeColour ec -> {
+							if (!this.basStack.isEmpty()) {
+								BeginApplicationStructure top = this.basStack.peek();
+								this.mapping.get(top).setCurrentEC(ec);
+							}
+							c.paint(d);
+						}
+						case EdgeWidth ew -> {
+							if (!this.basStack.isEmpty()) {
+								BeginApplicationStructure top = this.basStack.peek();
+								this.mapping.get(top).setCurrentEW(ew);
+							}
+							c.paint(d);
+						}
+						case LineColour lc -> {
+							if (!this.basStack.isEmpty()) {
+								BeginApplicationStructure top = this.basStack.peek();
+								this.mapping.get(top).setCurrentLC(lc);
+							}
+							c.paint(d);
+						}
+						case LineWidth lw -> {
+							if (!this.basStack.isEmpty()) {
+								BeginApplicationStructure top = this.basStack.peek();
+								this.mapping.get(top).setCurrentLW(lw);
+							}
+							c.paint(d);
+						}
+						default -> c.paint(d);
+					}
+				}
+			}
 		}
 	}
-
+	
 	private PolyBezierV2 mergePB(List<PolyBezierV2> tomerge) {
-		PolyBezierV2 ret = tomerge.get(0);
-		if(tomerge.size() ==1 ) {
+		PolyBezierV2 ret = tomerge.getFirst();
+		if (tomerge.size() == 1) {
 			return ret;
 		}
-		for(int i = 1;i<tomerge.size();i++) {
+		for (int i = 1; i < tomerge.size(); i++) {
 			ret.mergeShape(tomerge.get(i));
 		}
 		return ret;
 	}
-
-	public void setStyleHandler(MyStyleHandler sh) {
-		this.styleHandler=sh;
-		
-	}
-
-
+	
 }

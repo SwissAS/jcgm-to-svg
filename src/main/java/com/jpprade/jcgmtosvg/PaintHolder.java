@@ -13,123 +13,106 @@ import net.sf.jcgm.core.Member;
 import net.sf.jcgm.core.StructuredDataRecord;
 
 public class PaintHolder {
-
-
-	private FillColour currentFC = null;
-
-	private EdgeColour currentEC = null;
-
-	private EdgeWidth currentEW = null;		
-
-	private LineColour currentLC = null;
-
-	private LineWidth currentLW = null;
 	
+	private FillColour currentFC = null;
+	private EdgeColour currentEC = null;
+	private EdgeWidth currentEW = null;
+	private LineColour currentLC = null;
+	private LineWidth currentLW = null;
 	private String apsid = "";
-
-	private List<ApplicationStructureAttribute> curentAPS = new ArrayList<>();
-
+	
+	private final List<ApplicationStructureAttribute> curentAPS = new ArrayList<>();
+	
 	public FillColour getCurrentFC() {
-		return currentFC;
+		return this.currentFC;
 	}
-
+	
 	public void setCurrentFC(FillColour currentFC) {
 		this.currentFC = currentFC;
 	}
-
+	
 	public EdgeColour getCurrentEC() {
-		return currentEC;
+		return this.currentEC;
 	}
-
+	
 	public void setCurrentEC(EdgeColour currentEC) {
 		this.currentEC = currentEC;
 	}
-
+	
 	public EdgeWidth getCurrentEW() {
-		return currentEW;
+		return this.currentEW;
 	}
-
+	
 	public void setCurrentEW(EdgeWidth currentEW) {
 		this.currentEW = currentEW;
 	}
-
+	
 	public LineColour getCurrentLC() {
-		return currentLC;
+		return this.currentLC;
 	}
-
+	
 	public void setCurrentLC(LineColour currentLC) {
 		this.currentLC = currentLC;
 	}
-
+	
 	public LineWidth getCurrentLW() {
-		return currentLW;
+		return this.currentLW;
 	}
-
+	
 	public void setCurrentLW(LineWidth currentLW) {
 		this.currentLW = currentLW;
 	}
-
-
+	
+	
 	public void addAPS(ApplicationStructureAttribute aps) {
 		this.curentAPS.add(aps);
 	}
 	
 	public ApplicationStructureAttribute getRegionAPS() {
-		if(curentAPS!=null) {
-			for(ApplicationStructureAttribute aps : curentAPS) {
-				String attributeType= aps.getAttributeType();
-				StructuredDataRecord structuredDataRecord = aps.getStructuredDataRecord();
-				if("region".equals(attributeType)) {
-					return aps;
-				}
+		for (ApplicationStructureAttribute aps : this.curentAPS) {
+			String attributeType = aps.getApplicationStructureAttributeType();
+			if ("region".equals(attributeType)) {
+				return aps;
 			}
 		}
 		return null;
 	}
 	
 	public ApplicationStructureAttribute getVCAPS() {
-		if(curentAPS!=null) {
-			for(ApplicationStructureAttribute aps : curentAPS) {
-				String attributeType= aps.getAttributeType();
-				StructuredDataRecord structuredDataRecord = aps.getStructuredDataRecord();
-				if("viewcontext".equals(attributeType)) {
-					return aps;
-				}
+		for (ApplicationStructureAttribute aps : this.curentAPS) {
+			String attributeType = aps.getApplicationStructureAttributeType();
+			if ("viewcontext".equals(attributeType)) {
+				return aps;
 			}
 		}
 		return null;
 	}
-
+	
 	public String getName() {
-		if(curentAPS!=null) {
-			for(ApplicationStructureAttribute aps : curentAPS) {
-				String attributeType= aps.getAttributeType();
-				StructuredDataRecord structuredDataRecord = aps.getStructuredDataRecord();
-				if("name".equals(attributeType)) {
-					List<Member> members = structuredDataRecord.getMembers();
-					if(members!=null && members.size() ==1) {
-						if(members.get(0).getCount() > 0) {
-							if(members.get(0).getData() != null 
-									&& members.get(0).getData().size() > 0
-									&& members.get(0).getData().get(0) instanceof String) {
-								return (String) members.get(0).getData().get(0);
-							}
-						}
-					}
+		for (ApplicationStructureAttribute aps : this.curentAPS) {
+			String attributeType = aps.getApplicationStructureAttributeType();
+			StructuredDataRecord structuredDataRecord = aps.getSdr();
+			if ("name".equals(attributeType)) {
+				List<Member> members = structuredDataRecord.getMembers();
+				if (members != null
+						&& members.size() == 1
+						&& members.getFirst().getCount() > 0
+						&& members.getFirst().getData() != null
+						&& !members.getFirst().getData().isEmpty()
+						&& members.getFirst().getData().getFirst() instanceof String s) {
+					return s;
 				}
 			}
 		}
 		return "";
 	}
-
+	
 	public String getApsid() {
-		return apsid;
+		return this.apsid;
 	}
-
+	
 	public void setApsid(String apsid) {
 		this.apsid = apsid;
 	}
-
-
-
+	
 }
