@@ -166,7 +166,15 @@ public class CGM4SVG extends CGM {
 							}
 							c.paint(d);
 						}
-						default -> c.paint(d);
+						default -> {
+							if (!this.basStack.isEmpty()) {
+								// FIXME: Airbus provides CGMs where rectangles are printed for the entire size of the screen
+								//  in the content of an APS; we therefore skip it for the moment
+								//  → get rid of this workaround once the "ApplicationStructure"-related commands are supported; see related to do for CGMDisplay#isWithinApplicationStructureBody in jcgm-core
+								continue;
+							}
+							c.paint(d);
+						}
 					}
 				}
 			}
