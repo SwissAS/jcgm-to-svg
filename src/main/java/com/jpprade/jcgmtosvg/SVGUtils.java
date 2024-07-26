@@ -663,7 +663,7 @@ public class SVGUtils {
 		final long begin = System.currentTimeMillis();
 		for (File cgmFile : cgms) {
 			try {
-				new JcgmtosvgApplication().convert(cgmFile.getAbsolutePath(), output);
+				JcgmToSvg.convert(cgmFile.getAbsolutePath(), output);
 			} catch (IOException e) {
 				logger.error("Error while converting CGM {}", cgmFile);
 			}

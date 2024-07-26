@@ -1,16 +1,7 @@
 package com.jpprade.jcgmtosvg;
 
 
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Stack;
-import java.util.concurrent.ConcurrentHashMap;
-
 import com.jpprade.jcgmtosvg.commands.PolyBezierV2;
-
 import net.sf.jcgm.core.ApplicationStructureAttribute;
 import net.sf.jcgm.core.BeginApplicationStructure;
 import net.sf.jcgm.core.BeginFigure;
@@ -26,6 +17,17 @@ import net.sf.jcgm.core.LineColour;
 import net.sf.jcgm.core.LineWidth;
 import net.sf.jcgm.core.PolyBezier;
 
+import java.io.BufferedInputStream;
+import java.io.DataInputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Stack;
+import java.util.concurrent.ConcurrentHashMap;
+
 
 public class CGM4SVG extends CGM {
 	
@@ -38,6 +40,14 @@ public class CGM4SVG extends CGM {
 	private BeginFigure currentFigure = null;
 	
 	private final ConcurrentHashMap<BeginFigure, List<PolyBezierV2>> figurePolyBezier = new ConcurrentHashMap<>();
+	
+	public CGM4SVG(InputStream is, SVGPainter painter) throws IOException {
+		this.painter = painter;
+		
+		DataInputStream in = new DataInputStream(new BufferedInputStream(is));
+		read(in);
+		in.close();
+	}
 	
 	public CGM4SVG(File cgmFile, SVGPainter painter) throws IOException {
 		super(cgmFile);

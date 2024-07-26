@@ -3,23 +3,13 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.jpprade</groupId>
-    <artifactId>jcgmtosvg</artifactId>
-    <version>0.0.11</version>
+    <artifactId>jcgm-to-svg</artifactId>
+    <version>1.0.0</version>
 
     <dependencies>
         <dependency>
             <groupId>org.apache.xmlgraphics</groupId>
-            <artifactId>batik-svggen</artifactId>
-            <version>1.17</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.xmlgraphics</groupId>
-            <artifactId>batik-extension</artifactId>
-            <version>1.17</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.xmlgraphics</groupId>
-            <artifactId>batik-codec</artifactId>
+            <artifactId>batik-all</artifactId>
             <version>1.17</version>
         </dependency>
         <dependency>

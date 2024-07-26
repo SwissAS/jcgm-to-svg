@@ -10,6 +10,7 @@ import net.sf.jcgm.core.ScalingMode;
 import org.apache.batik.anim.dom.SVGDOMImplementation;
 import org.apache.batik.svggen.SVGGeneratorContext;
 import org.apache.batik.svggen.SVGGraphics2D;
+import org.apache.batik.svggen.SVGGraphics2DIOException;
 import org.apache.batik.svggen.SVGSyntax;
 import org.apache.batik.util.SVGConstants;
 import org.slf4j.Logger;
@@ -24,6 +25,8 @@ import java.awt.*;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
@@ -33,17 +36,69 @@ import java.util.List;
 import java.util.Map;
 
 
-public class JcgmtosvgApplication {
+public class JcgmToSvg {
 	
-	private static final Logger logger = LoggerFactory.getLogger(JcgmtosvgApplication.class);
+	private static final Logger logger = LoggerFactory.getLogger(JcgmToSvg.class);
 	
-	public void optimizeHotspot(File svgFile, double scale, boolean isMosaic) {
-		SVGUtils svgu = new SVGUtils();
-		svgu.moveHotspotToRightLayer(svgFile, svgFile);
-		if (scale > 0 && scale < 0.0001 || isMosaic) {
-			svgu.applyTransformation(svgFile, svgFile);
-			logger.info("Scaling very large illustration: {}", svgFile.getAbsolutePath());
+	/**
+	 * Converts a single CGM to an SVG
+	 *
+	 * @param is the input stream of the CGM
+	 * @param os an output stream of the converted SVG
+	 */
+	public static void convert(InputStream is, OutputStream os) throws SVGGraphics2DIOException {
+		logger.info("Start of CGM file to SVG conversion.");
+		// Get a DOMImplementation.
+		DOMImplementation domImpl = SVGDOMImplementation.getDOMImplementation();
+		
+		// Create an instance of org.w3c.dom.Document.
+		Document document = domImpl.createDocument(SVGDOMImplementation.SVG_NAMESPACE_URI, "svg", null);
+		
+		SVGPainter svgPainter = new SVGPainter();
+		
+		SVGGeneratorContext ctx = SVGGeneratorContext.createDefault(document);
+		
+		CGM4SVG cgm;
+		try {
+			cgm = loadCgm(is, svgPainter);
+		} catch (Exception e) {
+			logger.error("Error while converting CGM to SVG" + ", " + e.getMessage(), e);
+			throw new JcgmToSvgException("Error while converting the CGM to SVG", e.getCause());
 		}
+		
+		if (cgm == null) {
+			throw new JcgmToSvgException("Could not load the CGM");
+		}
+		
+		double scale = findScale(cgm);
+		if (scale > 0 && scale <= 0.0001) {
+			ctx.setPrecision(8);
+			logger.info("Precision 8 {}", scale);
+		} else if (scale > 0.0001 && scale < 0.01) {
+			ctx.setPrecision(4);
+			logger.info("Precision 4 {}", scale);
+		} else {
+			ctx.setPrecision(4);
+		}
+		
+		CDATASection styleSheet = document.createCDATASection("");
+		
+		// Create an instance of the SVG Generator.
+		SVGGraphics2D svgGenerator = new SVGGraphics2DHS(ctx, false);
+		
+		paint2(svgGenerator, cgm);
+		
+		svgGenerator.setSVGCanvasSize(cgm.getSize());
+		
+		Element root = createrCss(document, styleSheet, svgGenerator);
+		
+		// Finally, stream out SVG to the standard output using
+		// UTF-8 encoding.
+		boolean useCSS = true; // we want to use CSS style attributes
+		Writer out = new OutputStreamWriter(os, StandardCharsets.UTF_8);
+		svgGenerator.stream(root, out, useCSS, false);
+		
+		logger.info("End of CGM file to SVG conversion.");
 	}
 	
 	/**
@@ -54,19 +109,19 @@ public class JcgmtosvgApplication {
 	 * @return the SVG file
 	 * @throws IOException
 	 */
-	public File convert(String fileInput, String directoryOutput) throws IOException {
-		return this.convert(fileInput, directoryOutput, new HashMap<>(), true);
+	public static File convert(String fileInput, String directoryOutput) throws IOException {
+		return convert(fileInput, directoryOutput, new HashMap<>(), true);
 	}
 	
-	public File convert(String fileInput, String directoryOutput, boolean optimize) throws IOException {
-		return this.convert(fileInput, directoryOutput, new HashMap<>(), optimize);
+	public static File convert(String fileInput, String directoryOutput, boolean optimize) throws IOException {
+		return convert(fileInput, directoryOutput, new HashMap<>(), optimize);
 	}
 	
-	public File convert(String fileInput, String directoryOutput, Map<String, Object> info) throws IOException {
-		return this.convert(fileInput, directoryOutput, info, true);
+	public static File convert(String fileInput, String directoryOutput, Map<String, Object> info) throws IOException {
+		return convert(fileInput, directoryOutput, info, true);
 	}
 	
-	public File convert(String fileInput, String directoryOutput, Map<String, Object> info, boolean optimize) throws IOException {
+	public static File convert(String fileInput, String directoryOutput, Map<String, Object> info, boolean optimize) throws IOException {
 		logger.info("Converting CGM file to SVG: {} optimize = {}", fileInput, optimize);
 		// Get a DOMImplementation.
 		DOMImplementation domImpl = SVGDOMImplementation.getDOMImplementation();
@@ -129,13 +184,22 @@ public class JcgmtosvgApplication {
 		svgGenerator.stream(root, out, useCSS, false);
 		
 		if (optimize) {
-			this.optimizeHotspot(outf, scale, isMosaic);
+			optimizeHotspot(outf, scale, isMosaic);
 		}
 		
 		return outf;
 	}
 	
-	public static boolean findMosaic(CGM4SVG cgm) {
+	private static void optimizeHotspot(File svgFile, double scale, boolean isMosaic) {
+		SVGUtils svgu = new SVGUtils();
+		svgu.moveHotspotToRightLayer(svgFile, svgFile);
+		if (scale > 0 && scale < 0.0001 || isMosaic) {
+			svgu.applyTransformation(svgFile, svgFile);
+			logger.info("Scaling very large illustration: {}", svgFile.getAbsolutePath());
+		}
+	}
+	
+	private static boolean findMosaic(CGM4SVG cgm) {
 		List<Command> commands = cgm.getCommands();
 		for (Command c : commands) {
 			if (c instanceof BeginTileArray bta && (bta.getnTilesInLineDirection() > 1 || bta.getnTilesInPathDirection() > 1)) {
@@ -145,7 +209,7 @@ public class JcgmtosvgApplication {
 		return false;
 	}
 	
-	public static double findScale(CGM4SVG cgm) {
+	private static double findScale(CGM4SVG cgm) {
 		List<Command> commands = cgm.getCommands();
 		for (Command c : commands) {
 			if (c instanceof ScalingMode sm) {
@@ -155,7 +219,7 @@ public class JcgmtosvgApplication {
 		return 0;
 	}
 	
-	public static boolean findT6(CGM4SVG cgm) {
+	private static boolean findT6(CGM4SVG cgm) {
 		List<Command> commands = cgm.getCommands();
 		for (Command c : commands) {
 			if (c instanceof BitonalTile bt) {
@@ -168,7 +232,7 @@ public class JcgmtosvgApplication {
 		return false;
 	}
 	
-	private Element createrCss(Document document, CDATASection styleSheet, SVGGraphics2D svgGenerator) {
+	private static Element createrCss(Document document, CDATASection styleSheet, SVGGraphics2D svgGenerator) {
 		// Add a stylesheet to the definition section.
 		SVGSVGElement root = (SVGSVGElement) svgGenerator.getRoot();
 		
@@ -195,7 +259,18 @@ public class JcgmtosvgApplication {
 		return root;
 	}
 	
-	public static CGM4SVG loadCgm(String file, SVGPainter svgPainter) {
+	private static CGM4SVG loadCgm(InputStream is, SVGPainter svgPainter) {
+		CGM4SVG cgm;
+		try {
+			cgm = new CGM4SVG(is, svgPainter);
+		} catch (IOException e) {
+			logger.error("Error while loading the CGM from the input stream: " + e.getMessage(), e);
+			return null;
+		}
+		return cgm;
+	}
+	
+	private static CGM4SVG loadCgm(String file, SVGPainter svgPainter) {
 		File cgmFile = new File(file);
 		CGM4SVG cgm;
 		try {
