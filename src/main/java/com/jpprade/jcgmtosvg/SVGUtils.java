@@ -659,7 +659,7 @@ public class SVGUtils {
 		String input = "path to the folder containing the CGMs";
 		String output = "path to the folder where your want the SVGs to be generated";
 		
-		final Collection<File> cgms = FileUtils.listFiles(new File(input), new String[]{"cgm"}, false);
+		final Collection<File> cgms = FileUtils.listFiles(new File(input), new String[]{"cgm", "CGM"}, false);
 		final long begin = System.currentTimeMillis();
 		for (File cgmFile : cgms) {
 			try {
