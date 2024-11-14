@@ -16,6 +16,7 @@ import net.sf.jcgm.core.FillColour;
 import net.sf.jcgm.core.LineColour;
 import net.sf.jcgm.core.LineWidth;
 import net.sf.jcgm.core.PolyBezier;
+import net.sf.jcgm.core.RectangleElement;
 
 import java.io.BufferedInputStream;
 import java.io.DataInputStream;
@@ -80,6 +81,8 @@ public class CGM4SVG extends CGM {
 					}
 				}
 				case BeginApplicationStructure bas -> {
+					c.paint(d);
+					
 					currentAPS = bas;
 					this.basStack.add(currentAPS);
 					PaintHolder ph = new PaintHolder();
@@ -92,6 +95,8 @@ public class CGM4SVG extends CGM {
 					this.figurePolyBezier.put(this.currentFigure, new ArrayList<>());
 				}
 				case EndApplicationStructure ignored1 -> {
+					c.paint(d);
+					
 					this.basStack.pop();
 					if (!this.basStack.empty()) {
 						this.basStack.peek();
@@ -176,13 +181,16 @@ public class CGM4SVG extends CGM {
 							}
 							c.paint(d);
 						}
-						default -> {
-							if (!this.basStack.isEmpty()) {
+						case RectangleElement re -> {
+							if (d.isWithinApplicationStructureBody()) {
 								// FIXME: Airbus provides CGMs where rectangles are printed for the entire size of the screen
 								//  in the content of an APS; we therefore skip it for the moment
 								//  → get rid of this workaround once the "ApplicationStructure"-related commands are supported; see related to do for CGMDisplay#isWithinApplicationStructureBody in jcgm-core
 								continue;
-							}
+							} 
+							c.paint(d);
+						}
+						default -> {
 							c.paint(d);
 						}
 					}
