@@ -47,7 +47,7 @@ public class JcgmToSvg {
 	 * @param os an output stream of the converted SVG
 	 */
 	public static void convert(InputStream is, OutputStream os) throws SVGGraphics2DIOException {
-		logger.info("Start of CGM file to SVG conversion.");
+		logger.trace("Start of CGM file to SVG conversion.");
 		// Get a DOMImplementation.
 		DOMImplementation domImpl = SVGDOMImplementation.getDOMImplementation();
 		
@@ -73,10 +73,10 @@ public class JcgmToSvg {
 		double scale = findScale(cgm);
 		if (scale > 0 && scale <= 0.0001) {
 			ctx.setPrecision(8);
-			logger.info("Precision 8 {}", scale);
+			logger.debug("Precision 8 {}", scale);
 		} else if (scale > 0.0001 && scale < 0.01) {
 			ctx.setPrecision(4);
-			logger.info("Precision 4 {}", scale);
+			logger.debug("Precision 4 {}", scale);
 		} else {
 			ctx.setPrecision(4);
 		}
@@ -98,7 +98,7 @@ public class JcgmToSvg {
 		Writer out = new OutputStreamWriter(os, StandardCharsets.UTF_8);
 		svgGenerator.stream(root, out, useCSS, false);
 		
-		logger.info("End of CGM file to SVG conversion.");
+		logger.trace("End of CGM file to SVG conversion.");
 	}
 	
 	/**
@@ -122,7 +122,7 @@ public class JcgmToSvg {
 	}
 	
 	public static File convert(String fileInput, String directoryOutput, Map<String, Object> info, boolean optimize) throws IOException {
-		logger.info("Converting CGM file to SVG: {} optimize = {}", fileInput, optimize);
+		logger.trace("Converting CGM file to SVG: {} optimize = {}", fileInput, optimize);
 		// Get a DOMImplementation.
 		DOMImplementation domImpl = SVGDOMImplementation.getDOMImplementation();
 		
@@ -151,10 +151,10 @@ public class JcgmToSvg {
 		info.put("Scale", scale);
 		if (scale > 0 && scale <= 0.0001) {
 			ctx.setPrecision(8);
-			logger.info("Precision 8 {} {}", fileInput, scale);
+			logger.debug("Precision 8 {} {}", fileInput, scale);
 		} else if (scale > 0.0001 && scale < 0.01) {
 			ctx.setPrecision(4);
-			logger.info("Precision 4 {} {}", fileInput, scale);
+			logger.debug("Precision 4 {} {}", fileInput, scale);
 		} else {
 			ctx.setPrecision(4);
 		}
@@ -195,7 +195,7 @@ public class JcgmToSvg {
 		svgu.moveHotspotToRightLayer(svgFile, svgFile);
 		if (scale > 0 && scale < 0.0001 || isMosaic) {
 			svgu.applyTransformation(svgFile, svgFile);
-			logger.info("Scaling very large illustration: {}", svgFile.getAbsolutePath());
+			logger.debug("Scaling very large illustration: {}", svgFile.getAbsolutePath());
 		}
 	}
 	
