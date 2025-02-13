@@ -2,7 +2,8 @@ package com.jpprade.jcgmtosvg;
 
 
 import com.jpprade.jcgmtosvg.commands.PolyBezierV2;
-import net.sf.jcgm.core.ApplicationStructureAttribute;
+import com.jpprade.jcgmtosvg.extension.SVGGraphics2DHS;
+
 import net.sf.jcgm.core.BeginApplicationStructure;
 import net.sf.jcgm.core.BeginFigure;
 import net.sf.jcgm.core.CGM;
@@ -17,7 +18,10 @@ import net.sf.jcgm.core.LineColour;
 import net.sf.jcgm.core.LineWidth;
 import net.sf.jcgm.core.PolyBezier;
 import net.sf.jcgm.core.RectangleElement;
+import net.sf.jcgm.core.RestrictedText;
 
+import java.awt.geom.AffineTransform;
+import java.awt.geom.Rectangle2D;
 import java.io.BufferedInputStream;
 import java.io.DataInputStream;
 import java.io.File;
@@ -26,6 +30,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Stack;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -33,6 +38,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public class CGM4SVG extends CGM {
 	
 	SVGPainter painter;
+
+	private Map<String,Object> options = new HashMap<String,Object>();
 	
 	private final Stack<BeginApplicationStructure> basStack = new Stack<>();
 	
@@ -41,10 +48,13 @@ public class CGM4SVG extends CGM {
 	private BeginFigure currentFigure = null;
 	
 	private final ConcurrentHashMap<BeginFigure, List<PolyBezierV2>> figurePolyBezier = new ConcurrentHashMap<>();
-	
-	public CGM4SVG(InputStream is, SVGPainter painter) throws IOException {
+
+	public CGM4SVG(InputStream is, SVGPainter painter, Map<String,Object> options) throws IOException {
+		super();
 		this.painter = painter;
-		
+		if(options != null){
+			this.options = options;
+		}
 		DataInputStream in = new DataInputStream(new BufferedInputStream(is));
 		read(in);
 		in.close();
@@ -64,21 +74,12 @@ public class CGM4SVG extends CGM {
 			
 			BeginApplicationStructure currentAPS;
 			switch (c) {
-				case ApplicationStructureAttribute asa -> {
-					
-					BeginApplicationStructure top = this.basStack.peek();
-					
-					this.mapping.get(top).addAPS(asa);
-					
-					ApplicationStructureAttribute regionaps = this.mapping.get(top).getRegionAPS();
-					if (regionaps != null) {
-						this.painter.paint(regionaps, d, this.mapping.get(top), getSize());
-					} else {
-						ApplicationStructureAttribute vcaps = this.mapping.get(top).getVCAPS();
-						if (vcaps != null) {
-							this.painter.paint(vcaps, d, this.mapping.get(top), getSize());
-						}
+ 				case RestrictedText rt -> {
+					//Draw hotSpot on Restricted text if hotSpotEnabled option is set to true
+					if(options.get("hotSpotEnabled") != null && (boolean) options.get("hotSpotEnabled") == true) {
+						drawRestrictedTextHotspot(d,rt);
 					}
+					rt.paint(d);
 				}
 				case BeginApplicationStructure bas -> {
 					c.paint(d);
@@ -209,5 +210,48 @@ public class CGM4SVG extends CGM {
 		}
 		return ret;
 	}
-	
+
+	private Rectangle2D.Double addPadding(CGMDisplay d, Rectangle2D.Double shape) {
+		AffineTransform cgmTransform = d.getGraphics2D().getTransform();
+		if(options.get("hotSpotPadding") != null) {
+			Double paddingX = (Double) options.get("hotSpotPadding") / Math.abs(cgmTransform.getScaleX());
+			Double paddingY = (Double) options.get("hotSpotPadding") / Math.abs(cgmTransform.getScaleX());
+			shape.setFrame(shape.x - paddingX, shape.y - paddingY, 
+			shape.width + 2 * paddingX, shape.height + 2 * paddingY);
+		}
+		return shape;
+	}
+
+	private void drawRestrictedTextHotspot(CGMDisplay d, RestrictedText rt) {
+		String id = rt.getText();
+
+		boolean isWithinApplicationStructure = !this.basStack.isEmpty();
+
+		//hotSpotInApplicationStructureOnly option filter the Restricted text commands
+		//will put hotSpot only for Restricted text within an ApplicationStructure when option is set to true.
+		if(options.get("hotSpotInApplicationStructureOnly") != null &&
+		 (boolean) options.get("hotSpotInApplicationStructureOnly") == true &&
+		  !isWithinApplicationStructure) {
+			return;
+		}
+
+		if(isWithinApplicationStructure){
+			BeginApplicationStructure top = this.basStack.peek();
+			id = top.getIdentifier();
+		}
+
+		String text = rt.getText();
+		//apply a regex to select specific restricted text to draw hotSpot on. 
+		//hotSpotRegex contains the regex String.
+		if(options.get("hotSpotRegex") == null || text.matches((String) options.get("hotSpotRegex"))){
+			
+			Rectangle2D.Double shape = rt.getTextBox();
+			//add padding to rectangle hotSpot shape if hotSpotPadding is set (double value)
+			shape = addPadding(d,shape);						
+
+			SVGGraphics2DHS g2d = (SVGGraphics2DHS) d.getGraphics2D();
+			g2d.drawHotSpot(shape, id, text, (String)options.get("hotSpotLink"));
+		}	
+	}
+
 }
