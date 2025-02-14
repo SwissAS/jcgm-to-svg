@@ -1,11 +1,8 @@
 package com.jpprade.jcgmtosvg;
 
 import com.jpprade.jcgmtosvg.extension.SVGGraphics2DHS;
-import net.sf.jcgm.core.BeginTileArray;
-import net.sf.jcgm.core.BitonalTile;
 import net.sf.jcgm.core.CGMDisplay;
 import net.sf.jcgm.core.Command;
-import net.sf.jcgm.core.CompressionType;
 import net.sf.jcgm.core.ScalingMode;
 import org.apache.batik.anim.dom.SVGDOMImplementation;
 import org.apache.batik.svggen.SVGGeneratorContext;
@@ -36,7 +33,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-
 public class JcgmToSvg {
 	
 	private static final Logger logger = LoggerFactory.getLogger(JcgmToSvg.class);
@@ -59,12 +55,13 @@ public class JcgmToSvg {
 	 * @param options Map<String, Object> that contains the conversion options:
 	 * - hotSpotEnabled: Enabled RestrictedText hotSpot feature
 	 * - hotSpotInApplicationStructureOnly: Enabled RestrictedText hotSpot feature and filter it on ApplicationSTructures only
-	 * - hotSpotPadding: Add padding to the hotSpot box
+	 * - hotSpotPadding: Add padding to the hotSpot box in px related to the cgm default size
 	 * - hotSpotRegex: Filter Restricted text hotspots based on a regular expression
 	 * - hotSpotLink: Add a specific link to the Restricted text hotspot
+	 * - hotSpotColor: Specify the color of the hotSpot (format: rgba(r, g, b, a))
 	 */
 	public static void convert(InputStream is, OutputStream os, Map<String, Object> options) throws SVGGraphics2DIOException {
-		logger.info("Start of CGM file to SVG conversion.");
+		logger.info("Start of CGM file to SVG conversion with the options:{}.", options.toString());
 		// Get a DOMImplementation.
 		DOMImplementation domImpl = SVGDOMImplementation.getDOMImplementation();
 		
@@ -127,20 +124,10 @@ public class JcgmToSvg {
 	 * @throws IOException
 	 */
 	public static File convert(String fileInput, String directoryOutput) throws IOException {
-		return convert(fileInput, directoryOutput, new HashMap<>(), true);
+		return convert(fileInput, directoryOutput, new HashMap<>());
 	}
 	
-	public static File convert(String fileInput, String directoryOutput, boolean optimize) throws IOException {
-		return convert(fileInput, directoryOutput, new HashMap<>(), optimize);
-	}
-	
-	public static File convert(String fileInput, String directoryOutput, Map<String, Object> info) throws IOException {
-		return convert(fileInput, directoryOutput, info, true);
-	}
-	
-	public static File convert(String fileInput, String directoryOutput, Map<String, Object> options, boolean optimize) throws IOException {
-		logger.info("Converting CGM file to SVG: {} optimize = {}", fileInput, optimize);
-
+	public static File convert(String fileInput, String directoryOutput, Map<String, Object> options) throws IOException {
 		File file = new File(fileInput);
 
 		String fname = getFilenameWithoutExtension(new File(fileInput));
@@ -151,7 +138,7 @@ public class JcgmToSvg {
         try (InputStream inputStream = new FileInputStream(file)) {
 			convert(inputStream, fos, options);           
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error("An error occured during the conversion: {}", e);
         }
 		
 		return outf;

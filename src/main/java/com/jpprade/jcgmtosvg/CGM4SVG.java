@@ -21,6 +21,7 @@ import net.sf.jcgm.core.RectangleElement;
 import net.sf.jcgm.core.RestrictedText;
 
 import java.awt.geom.AffineTransform;
+import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.io.BufferedInputStream;
 import java.io.DataInputStream;
@@ -36,10 +37,19 @@ import java.util.concurrent.ConcurrentHashMap;
 
 
 public class CGM4SVG extends CGM {
+
+	static final String RESTRICTED_TEXT_HOTSPOT_ID = "rt_";
+
+	static final String OPTION_HOTSPOT_ENABLED = "hotSpotEnabled";
+	static final String OPTION_HOTSPOT_IN_APPLICATION_STRUCTURE_ONLY = "hotSpotInApplicationStructureOnly";
+	static final String OPTION_HOTSPOT_PADDING = "hotSpotPadding";
+	static final String OPTION_HOTSPOT_REGEX = "hotSpotRegex";
+	static final String OPTION_HOTSPOT_LINK = "hotSpotLink";
+	static final String OPTION_HOTSPOT_COLOR = "hotSpotColor";
 	
 	SVGPainter painter;
 
-	private Map<String,Object> options = new HashMap<String,Object>();
+	Map<String,Object> options = new HashMap<String,Object>();
 	
 	private final Stack<BeginApplicationStructure> basStack = new Stack<>();
 	
@@ -67,6 +77,7 @@ public class CGM4SVG extends CGM {
 	
 	@Override
 	public void paint(CGMDisplay d) {
+		int restrictedTextCounter = 0;
 		for (Command c : getCommands()) {
 			if (c == null) {
 				continue;
@@ -76,8 +87,9 @@ public class CGM4SVG extends CGM {
 			switch (c) {
  				case RestrictedText rt -> {
 					//Draw hotSpot on Restricted text if hotSpotEnabled option is set to true
-					if(options.get("hotSpotEnabled") != null && (boolean) options.get("hotSpotEnabled") == true) {
-						drawRestrictedTextHotspot(d,rt);
+					if(options.get(OPTION_HOTSPOT_ENABLED) != null && (boolean) options.get(OPTION_HOTSPOT_ENABLED) == true) {
+						drawRestrictedTextHotspot(d,rt,RESTRICTED_TEXT_HOTSPOT_ID+restrictedTextCounter);
+						restrictedTextCounter++;
 					}
 					rt.paint(d);
 				}
@@ -213,44 +225,61 @@ public class CGM4SVG extends CGM {
 
 	private Rectangle2D.Double addPadding(CGMDisplay d, Rectangle2D.Double shape) {
 		AffineTransform cgmTransform = d.getGraphics2D().getTransform();
-		if(options.get("hotSpotPadding") != null) {
-			Double paddingX = (Double) options.get("hotSpotPadding") / Math.abs(cgmTransform.getScaleX());
-			Double paddingY = (Double) options.get("hotSpotPadding") / Math.abs(cgmTransform.getScaleX());
+		if(options.get(OPTION_HOTSPOT_PADDING) != null) {
+			Double paddingX = (Double) options.get(OPTION_HOTSPOT_PADDING) / Math.abs(cgmTransform.getScaleX());
+			Double paddingY = (Double) options.get(OPTION_HOTSPOT_PADDING) / Math.abs(cgmTransform.getScaleX());
 			shape.setFrame(shape.x - paddingX, shape.y - paddingY, 
 			shape.width + 2 * paddingX, shape.height + 2 * paddingY);
 		}
 		return shape;
 	}
 
-	private void drawRestrictedTextHotspot(CGMDisplay d, RestrictedText rt) {
-		String id = rt.getText();
+	private Rectangle2D.Double addOffset(CGMDisplay d, Rectangle2D.Double shape, Point2D offset) {
+		shape.setFrame(shape.x+offset.getX(),shape.y-offset.getY(),shape.width,shape.height);
+		return shape;
+	}
 
+	private String getApsID(RestrictedText rt) {
 		boolean isWithinApplicationStructure = !this.basStack.isEmpty();
 
 		//hotSpotInApplicationStructureOnly option filter the Restricted text commands
 		//will put hotSpot only for Restricted text within an ApplicationStructure when option is set to true.
-		if(options.get("hotSpotInApplicationStructureOnly") != null &&
-		 (boolean) options.get("hotSpotInApplicationStructureOnly") == true &&
+		if(options.get(OPTION_HOTSPOT_IN_APPLICATION_STRUCTURE_ONLY) != null &&
+		 (boolean) options.get(OPTION_HOTSPOT_IN_APPLICATION_STRUCTURE_ONLY) == true &&
 		  !isWithinApplicationStructure) {
-			return;
+			return null;
 		}
 
 		if(isWithinApplicationStructure){
 			BeginApplicationStructure top = this.basStack.peek();
-			id = top.getIdentifier();
+			return top.getIdentifier();
 		}
 
+		return rt.getText();
+	}
+
+	private void drawRestrictedTextHotspot(CGMDisplay d, RestrictedText rt, String id) {
+
+		String apsid = getApsID(rt);
+
+		if(apsid == null) {
+			return;
+		}
+	
 		String text = rt.getText();
 		//apply a regex to select specific restricted text to draw hotSpot on. 
 		//hotSpotRegex contains the regex String.
-		if(options.get("hotSpotRegex") == null || text.matches((String) options.get("hotSpotRegex"))){
+		if(options.get(OPTION_HOTSPOT_REGEX) == null || text.matches((String) options.get(OPTION_HOTSPOT_REGEX))){
 			
 			Rectangle2D.Double shape = rt.getTextBox();
+			//apply Restricted Text offset on the hotSpot shape
+			Point2D offset = rt.getTextOffset(d);
+			shape = addOffset(d,shape,offset);	
 			//add padding to rectangle hotSpot shape if hotSpotPadding is set (double value)
 			shape = addPadding(d,shape);						
 
 			SVGGraphics2DHS g2d = (SVGGraphics2DHS) d.getGraphics2D();
-			g2d.drawHotSpot(shape, id, text, (String)options.get("hotSpotLink"));
+			g2d.drawHotSpot(shape, id, apsid, text, (String)options.get(OPTION_HOTSPOT_LINK), (String)options.get(OPTION_HOTSPOT_COLOR));
 		}	
 	}
 
