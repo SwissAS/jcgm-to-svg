@@ -19,6 +19,7 @@ import org.w3c.dom.Element;
 import org.w3c.dom.svg.SVGSVGElement;
 
 import java.awt.*;
+import java.io.Closeable;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -100,7 +101,12 @@ public class JcgmToSvg {
 		// Create an instance of the SVG Generator.
 		SVGGraphics2D svgGenerator = new SVGGraphics2DHS(ctx, false);
 		
-		paint2(svgGenerator, cgm);
+		try {
+			paint2(svgGenerator, cgm);
+		} catch (NullPointerException e) {
+			closeStreams(is, os);
+			throw new JcgmToSvgException("Invalid CGM input stream: ", e);
+		}
 		
 		svgGenerator.setSVGCanvasSize(cgm.getSize());
 		
@@ -113,6 +119,18 @@ public class JcgmToSvg {
 		svgGenerator.stream(root, out, useCSS, false);
 		
 		logger.info("End of CGM file to SVG conversion.");
+	}
+
+	private static void closeStreams(Closeable... streams) {
+		for (Closeable stream : streams) {
+			if (stream != null) {
+				try {
+					stream.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}
 	}
 	
 	/**

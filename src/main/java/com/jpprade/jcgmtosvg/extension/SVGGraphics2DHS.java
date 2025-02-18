@@ -26,7 +26,7 @@ public class SVGGraphics2DHS extends SVGGraphics2D {
 		// Only BasicStroke can be converted to an SVG attribute equivalent.
 		// If the GraphicContext's Stroke is not an instance of BasicStroke,
 		// then the stroked outline is filled.
-		Stroke stroke = this.gc.getStroke();
+		Stroke stroke = this.getGraphicContext().getStroke();
 		if (stroke instanceof BasicStroke) {
 			Element svgShape = this.shapeConverter.toSVG(s);
 			if (svgShape != null) {
@@ -43,7 +43,7 @@ public class SVGGraphics2DHS extends SVGGraphics2D {
 		// Only BasicStroke can be converted to an SVG attribute equivalent.
 		// If the GraphicContext's Stroke is not an instance of BasicStroke,
 		// then the stroked outline is filled.
-		Stroke stroke = this.gc.getStroke();
+		Stroke stroke = this.getGraphicContext().getStroke();
 		if (stroke instanceof BasicStroke) {
 			Element svgShape = this.shapeConverter.toSVG(s);
 			if (svgShape != null) {
@@ -58,7 +58,8 @@ public class SVGGraphics2DHS extends SVGGraphics2D {
 	
 	private void enrichHS(Element svgShape, String id, String apsId, String apsName, String link, String color) {
 
-		String hotSpotLink = (link != null) ? "window.location.href='"+link+"?id="+apsId+"&name="+apsName+"'" : "";
+		String hotSpotRectangle = svgShape.getAttribute("x")+","+svgShape.getAttribute("y")+","+svgShape.getAttribute("width")+","+svgShape.getAttribute("height");
+		String hotSpotLink = (link != null) ? "window.location.href='"+link+"?id="+apsId+"&name="+apsName+"&rect=["+hotSpotRectangle+"]'" : "";
 		String hotSpotColor = (color != null) ? color : HOTSPOT_COLOR;
 
 		svgShape.setAttributeNS(null, "id", id);
@@ -68,7 +69,7 @@ public class SVGGraphics2DHS extends SVGGraphics2D {
 		svgShape.setAttributeNS(null, "fill", hotSpotColor);
 		svgShape.setAttributeNS(null, "class", "hotspot");
 		svgShape.setAttributeNS(null, "onclick", "clickHS('" + id + "');"+hotSpotLink);
-		svgShape.setAttributeNS(null, "stroke-width", "0");
+		svgShape.setAttributeNS(null, "stroke", "none");
 	}
 	
 	private void enrichTDET(Element svgShape, String apsId, String apsName) {
