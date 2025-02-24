@@ -127,7 +127,7 @@ public class JcgmToSvg {
 				try {
 					stream.close();
 				} catch (IOException e) {
-					e.printStackTrace();
+					logger.info("Error while closing streams (invalid CGM input files):", e);
 				}
 			}
 		}

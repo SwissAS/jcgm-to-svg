@@ -12,6 +12,7 @@ import org.w3c.dom.Element;
 public class SVGGraphics2DHS extends SVGGraphics2D {
 
 	private static final String HOTSPOT_COLOR = "transparent";
+	private static final String ALLOWED_CHARACTER_REGEX = "[^a-zA-Z0-9-_.:,/() ]";
 	
 	public SVGGraphics2DHS(SVGGeneratorContext generatorCtx,
 	                       boolean textAsShapes) {
@@ -58,9 +59,17 @@ public class SVGGraphics2DHS extends SVGGraphics2D {
 	
 	private void enrichHS(Element svgShape, String id, String apsId, String apsName, String link, String color) {
 
+		id = hotSpotAttributeSanitizer(id);
+		apsName = hotSpotAttributeSanitizer(apsName);
+		apsId = hotSpotAttributeSanitizer(apsId);
+		link = hotSpotAttributeSanitizer(link);
+
 		String hotSpotRectangle = svgShape.getAttribute("x")+","+svgShape.getAttribute("y")+","+svgShape.getAttribute("width")+","+svgShape.getAttribute("height");
 		String hotSpotLink = (link != null) ? "window.location.href='"+link+"?id="+apsId+"&name="+apsName+"&rect=["+hotSpotRectangle+"]'" : "";
 		String hotSpotColor = (color != null) ? color : HOTSPOT_COLOR;
+		
+		hotSpotRectangle = hotSpotAttributeSanitizer(hotSpotRectangle);
+		hotSpotColor = hotSpotAttributeSanitizer(hotSpotColor);		
 
 		svgShape.setAttributeNS(null, "id", id);
 		svgShape.setAttributeNS(null, "apsname", apsName);
@@ -73,9 +82,21 @@ public class SVGGraphics2DHS extends SVGGraphics2D {
 	}
 	
 	private void enrichTDET(Element svgShape, String apsId, String apsName) {
+
+		apsName = hotSpotAttributeSanitizer(apsName);
+		apsId = hotSpotAttributeSanitizer(apsId);
+
 		svgShape.setAttributeNS(null, "apsname", apsName);
 		svgShape.setAttributeNS(null, "apsid", apsId);
 		svgShape.setAttributeNS(null, "class", "tdet");
+	}
+
+	private String hotSpotAttributeSanitizer(String hotSpotAttribute) {
+		if(hotSpotAttribute == null) {
+			return "";
+		}
+		return hotSpotAttribute.replaceAll(ALLOWED_CHARACTER_REGEX, "");
+		
 	}
 	
 }

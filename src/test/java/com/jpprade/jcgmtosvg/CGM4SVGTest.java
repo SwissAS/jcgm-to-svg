@@ -46,15 +46,11 @@ class CGM4SVGTest {
     }
 
     @Test
-    void testOptionsAreSetCorrectly() {
+    void testOptionsAreSetCorrectly() throws IOException {
         options.put("hotSpotEnabled", true);
         CGM4SVG newCgm4svg;
-        try {
-            newCgm4svg = new CGM4SVG(new ByteArrayInputStream(new byte[0]), mockPainter, options);
-            assertTrue((boolean) newCgm4svg.options.get("hotSpotEnabled"));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        newCgm4svg = new CGM4SVG(new ByteArrayInputStream(new byte[0]), mockPainter, options);
+        assertTrue((boolean) newCgm4svg.options.get("hotSpotEnabled"));
    }
 
    @Test
