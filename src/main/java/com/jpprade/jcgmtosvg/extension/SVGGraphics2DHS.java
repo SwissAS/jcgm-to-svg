@@ -12,7 +12,7 @@ import org.w3c.dom.Element;
 public class SVGGraphics2DHS extends SVGGraphics2D {
 
 	private static final String HOTSPOT_COLOR = "transparent";
-	private static final String ALLOWED_CHARACTER_REGEX = "[^a-zA-Z0-9-_.:,/() ]";
+	private static final String SANITIZER_REGEX = "[^a-zA-Z0-9-_.:,/() ]";
 	
 	public SVGGraphics2DHS(SVGGeneratorContext generatorCtx,
 	                       boolean textAsShapes) {
@@ -95,7 +95,7 @@ public class SVGGraphics2DHS extends SVGGraphics2D {
 		if(hotSpotAttribute == null) {
 			return "";
 		}
-		return hotSpotAttribute.replaceAll(ALLOWED_CHARACTER_REGEX, "");
+		return hotSpotAttribute.replaceAll(SANITIZER_REGEX, "");
 		
 	}
 	
