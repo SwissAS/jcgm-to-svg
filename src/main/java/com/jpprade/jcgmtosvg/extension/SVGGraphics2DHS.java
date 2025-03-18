@@ -3,6 +3,7 @@ package com.jpprade.jcgmtosvg.extension;
 import java.awt.BasicStroke;
 import java.awt.Shape;
 import java.awt.Stroke;
+import java.awt.geom.Rectangle2D;
 
 import org.apache.batik.svggen.DOMGroupManager;
 import org.apache.batik.svggen.SVGGeneratorContext;
@@ -31,7 +32,7 @@ public class SVGGraphics2DHS extends SVGGraphics2D {
 		if (stroke instanceof BasicStroke) {
 			Element svgShape = this.shapeConverter.toSVG(s);
 			if (svgShape != null) {
-				enrichHS(svgShape, id, apsId, apsName, link, color);
+				enrichHS(s, svgShape, id, apsId, apsName, link, color);
 				this.domGroupManager.addElement(svgShape, DOMGroupManager.DRAW);
 			}
 		} else {
@@ -57,14 +58,18 @@ public class SVGGraphics2DHS extends SVGGraphics2D {
 		}
 	}
 	
-	private void enrichHS(Element svgShape, String id, String apsId, String apsName, String link, String color) {
+	private void enrichHS(Shape s, Element svgShape, String id, String apsId, String apsName, String link, String color) {
 
 		id = hotSpotAttributeSanitizer(id);
 		apsName = hotSpotAttributeSanitizer(apsName);
 		apsId = hotSpotAttributeSanitizer(apsId);
 		link = hotSpotAttributeSanitizer(link);
 
-		String hotSpotRectangle = svgShape.getAttribute("x")+","+svgShape.getAttribute("y")+","+svgShape.getAttribute("width")+","+svgShape.getAttribute("height");
+		Shape transformedShape = this.getTransform().createTransformedShape(s);
+
+		Rectangle2D rect = transformedShape.getBounds2D();
+
+		String hotSpotRectangle = rect.getX()+","+rect.getY()+","+rect.getWidth()+","+rect.getHeight();
 		String hotSpotLink = (link != null) ? "window.location.href='"+link+"?id="+apsId+"&name="+apsName+"&rect=["+hotSpotRectangle+"]'" : "";
 		String hotSpotColor = (color != null) ? color : HOTSPOT_COLOR;
 		
