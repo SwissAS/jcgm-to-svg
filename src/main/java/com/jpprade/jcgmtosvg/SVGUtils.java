@@ -31,6 +31,8 @@ import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -656,14 +658,24 @@ public class SVGUtils {
 	}
 	
 	public static void main(String[] args) {
-		String input = "path to the folder containing the CGMs";
-		String output = "path to the folder where your want the SVGs to be generated";
+		String input = "E:\\test\\cgm";  //path to the folder containing the CGMs
+		String output = "E:\\test\\svg"; //path to the folder where your want the SVGs to be generated
+
+		Map<String, Object> options = new HashMap<String, Object>();
+
+		options.put("hotSpotEnabled",true);
+		options.put("hotSpotInApplicationStructureOnly",false);
+		options.put("hotSpotPadding",2.0);
+		options.put("hotSpotRegex","(\\d+|^FR\\d+$|^Z\\d+$|^\\[\\d+\\].*)");
+		options.put("hotSpotLink","amos://IPC_FIG_ITEM");
+		options.put("hotSpotColor","rgba(0,200,100,0.5)");
+		
 		
 		final Collection<File> cgms = FileUtils.listFiles(new File(input), new String[]{"cgm", "CGM"}, false);
 		final long begin = System.currentTimeMillis();
 		for (File cgmFile : cgms) {
 			try {
-				JcgmToSvg.convert(cgmFile.getAbsolutePath(), output);
+				JcgmToSvg.convert(cgmFile.getAbsolutePath(), output, options);
 			} catch (IOException e) {
 				logger.error("Error while converting CGM {}", cgmFile);
 			}
