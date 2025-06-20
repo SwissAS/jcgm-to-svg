@@ -5,6 +5,8 @@ import net.sf.jcgm.core.ApplicationStructureAttribute;
 import net.sf.jcgm.core.CGMDisplay;
 import net.sf.jcgm.core.Member;
 import net.sf.jcgm.core.StructuredDataRecord;
+import net.sf.jcgm.core.workaround.Graphics2DDecorator;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,9 +61,13 @@ public class SVGPainter {
 						pos += 2;
 						point++;
 					}
-					
-					
-					SVGGraphics2DHS g2d = (SVGGraphics2DHS) d.getGraphics2D();
+
+					SVGGraphics2DHS g2d;
+					if (d.getGraphics2D() instanceof Graphics2DDecorator decorator) {
+						g2d = (SVGGraphics2DHS) decorator.getDelegate();
+					} else {
+						g2d = (SVGGraphics2DHS) d.getGraphics2D();
+					}
 					g2d.setStroke(d.getLineStroke());
 					g2d.setColor(d.getLineColor());
 					
@@ -113,8 +119,13 @@ public class SVGPainter {
 					double h = y2 - y1;
 					
 					Rectangle2D.Double shape = new Rectangle2D.Double(x1, y1, w, h);
-					
-					SVGGraphics2DHS g2d = (SVGGraphics2DHS) d.getGraphics2D();
+
+					SVGGraphics2DHS g2d;
+					if (d.getGraphics2D() instanceof Graphics2DDecorator decorator) {
+						g2d = (SVGGraphics2DHS) decorator.getDelegate();
+					} else {
+						g2d = (SVGGraphics2DHS) d.getGraphics2D();
+					}
 					
 					g2d.setColor(d.getEdgeColor());
 					g2d.setStroke(d.getEdgeStroke());
@@ -122,7 +133,12 @@ public class SVGPainter {
 				} else if (members.get(0).getData().getFirst().toString().equals("3")) {//polygon
 					List<Double> objects = (List<Double>) (Object) members.get(1).getData();
 					Path2D.Double polygon = new Path2D.Double(Path2D.WIND_EVEN_ODD);
-					SVGGraphics2DHS g2d = (SVGGraphics2DHS) d.getGraphics2D();
+					SVGGraphics2DHS g2d;
+					if (d.getGraphics2D() instanceof Graphics2DDecorator decorator) {
+						g2d = (SVGGraphics2DHS) decorator.getDelegate();
+					} else {
+						g2d = (SVGGraphics2DHS) d.getGraphics2D();
+					}
 					
 					for (int i = 0; i < objects.size(); i = i + 2) {
 						if (i == 0) {
@@ -197,8 +213,13 @@ public class SVGPainter {
 					}
 					
 					Rectangle2D.Double shape = new Rectangle2D.Double(x1, y1, w, h);
-					
-					SVGGraphics2DHS g2d = (SVGGraphics2DHS) d.getGraphics2D();
+
+					SVGGraphics2DHS g2d;
+					if (d.getGraphics2D() instanceof Graphics2DDecorator decorator) {
+						g2d = (SVGGraphics2DHS) decorator.getDelegate();
+					} else {
+						g2d = (SVGGraphics2DHS) d.getGraphics2D();
+					}
 					
 					Color trans = new Color(255, 255, 255, 255);
 					

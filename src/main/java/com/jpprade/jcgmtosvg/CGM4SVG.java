@@ -19,6 +19,7 @@ import net.sf.jcgm.core.LineWidth;
 import net.sf.jcgm.core.PolyBezier;
 import net.sf.jcgm.core.RectangleElement;
 import net.sf.jcgm.core.RestrictedText;
+import net.sf.jcgm.core.workaround.Graphics2DDecorator;
 
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Point2D;
@@ -278,7 +279,12 @@ public class CGM4SVG extends CGM {
 			//add padding to rectangle hotSpot shape if hotSpotPadding is set (double value)
 			shape = addPadding(d,shape);						
 
-			SVGGraphics2DHS g2d = (SVGGraphics2DHS) d.getGraphics2D();
+			SVGGraphics2DHS g2d;
+			if (d.getGraphics2D() instanceof Graphics2DDecorator decorator) {
+				g2d = (SVGGraphics2DHS) decorator.getDelegate();
+			} else {
+				g2d = (SVGGraphics2DHS) d.getGraphics2D(); 
+			}
 			g2d.drawHotSpot(shape, id, apsid, text, (String)options.get(OPTION_HOTSPOT_LINK), (String)options.get(OPTION_HOTSPOT_COLOR));
 		}	
 	}

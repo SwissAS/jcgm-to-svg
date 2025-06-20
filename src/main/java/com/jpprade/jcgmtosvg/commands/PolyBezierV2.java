@@ -9,6 +9,7 @@ import net.sf.jcgm.core.FillColour;
 import net.sf.jcgm.core.InteriorStyle;
 import net.sf.jcgm.core.InteriorStyle.Style;
 import net.sf.jcgm.core.PolyBezier;
+import net.sf.jcgm.core.workaround.Graphics2DDecorator;
 
 import java.awt.*;
 import java.awt.geom.CubicCurve2D;
@@ -56,8 +57,13 @@ public class PolyBezierV2 extends ExtendedCommand {
 			if (this.curves == null) {
 				initCurves();
 			}
-			
-			SVGGraphics2DHS g2d = (SVGGraphics2DHS) d.getGraphics2D();
+
+			SVGGraphics2DHS g2d;
+			if (d.getGraphics2D() instanceof Graphics2DDecorator decorator) {
+				g2d = (SVGGraphics2DHS) decorator.getDelegate();
+			} else {
+				g2d = (SVGGraphics2DHS) d.getGraphics2D();
+			}
 			g2d.setStroke(d.getLineStroke());
 			g2d.setColor(d.getLineColor());
 			
@@ -68,7 +74,12 @@ public class PolyBezierV2 extends ExtendedCommand {
 			
 			drawCustom(g2d, gp);
 		} else {
-			SVGGraphics2DHS g2d = (SVGGraphics2DHS) d.getGraphics2D();
+			SVGGraphics2DHS g2d;
+			if (d.getGraphics2D() instanceof Graphics2DDecorator decorator) {
+				g2d = (SVGGraphics2DHS) decorator.getDelegate();
+			} else {
+				g2d = (SVGGraphics2DHS) d.getGraphics2D();
+			}
 			if (currentEC != null || currentEW != null) {
 				g2d.setStroke(d.getEdgeStroke());
 				g2d.setColor(d.getEdgeColor());
