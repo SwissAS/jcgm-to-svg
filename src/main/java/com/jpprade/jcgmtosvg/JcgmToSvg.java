@@ -62,7 +62,7 @@ public class JcgmToSvg {
 	 * - hotSpotColor: Specify the color of the hotSpot (format: rgba(r, g, b, a))
 	 */
 	public static void convert(InputStream is, OutputStream os, Map<String, Object> options) throws SVGGraphics2DIOException {
-		logger.info("Start of CGM file to SVG conversion with the options:{}.", options.toString());
+		logger.debug("Start of CGM file to SVG conversion with the options:{}.", options.toString());
 		// Get a DOMImplementation.
 		DOMImplementation domImpl = SVGDOMImplementation.getDOMImplementation();
 		
@@ -88,10 +88,10 @@ public class JcgmToSvg {
 		double scale = findScale(cgm);
 		if (scale > 0 && scale <= 0.0001) {
 			ctx.setPrecision(8);
-			logger.info("Precision 8 {}", scale);
+			logger.trace("Precision 8 {}", scale);
 		} else if (scale > 0.0001 && scale < 0.01) {
 			ctx.setPrecision(4);
-			logger.info("Precision 4 {}", scale);
+			logger.trace("Precision 4 {}", scale);
 		} else {
 			ctx.setPrecision(4);
 		}
@@ -118,7 +118,7 @@ public class JcgmToSvg {
 		Writer out = new OutputStreamWriter(os, StandardCharsets.UTF_8);
 		svgGenerator.stream(root, out, useCSS, false);
 		
-		logger.info("End of CGM file to SVG conversion.");
+		logger.debug("End of CGM file to SVG conversion.");
 	}
 
 	private static void closeStreams(Closeable... streams) {
