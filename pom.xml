@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.jpprade</groupId>
     <artifactId>jcgm-to-svg</artifactId>
-    <version>1.0.5</version>
+    <version>1.0.6</version>
 
     <dependencies>
         <dependency>
@@ -32,7 +32,7 @@
             <artifactId>jcgm-core</artifactId>
             <version>2.0.5</version>
             <scope>system</scope>
-            <systemPath>E:/ws/github/jcgm-core/build/jcgm-core-2.0.5.jar</systemPath>
+            <systemPath>E:/ws/github/jcgm-core/build/jcgm-core-2.1.1.jar</systemPath>
         </dependency>
          <!-- JUnit 5 API for writing tests -->
         <dependency>
