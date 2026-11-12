@@ -19,6 +19,8 @@ import java.awt.geom.Point2D.Double;
 
 public class PolyBezierV2 extends ExtendedCommand {
 	
+	private static final double CURVE_FLATNESS = 0.1;
+
 	/**
 	 * The scales curves to draw
 	 */
@@ -68,8 +70,13 @@ public class PolyBezierV2 extends ExtendedCommand {
 			g2d.setColor(d.getLineColor());
 			
 			GeneralPath gp = new GeneralPath();
-			for (Shape curve : this.curves) {
-				gp.append(curve, true);
+			boolean flattenCurve = d.getCGM().shouldFlattenCurve();
+			for (CubicCurve2D.Double curve : this.curves) {
+				if (flattenCurve) {
+					gp.append(curve.getPathIterator(null, CURVE_FLATNESS), true);
+				} else {
+					gp.append(curve, true);
+				}
 			}
 			
 			drawCustom(g2d, gp);
@@ -89,13 +96,24 @@ public class PolyBezierV2 extends ExtendedCommand {
 			}
 			
 			GeneralPath gp = new GeneralPath();
+			boolean flattenCurve = d.getCGM().shouldFlattenCurve();
 			
 			for (int i = 0; i < this.p1.length; i++) {
 				if (i == 0) {
 					gp.moveTo(this.p1[i].x, this.p1[i].y);
 				}
-				
-				gp.curveTo(this.p2[i].x, this.p2[i].y, this.p3[i].x, this.p3[i].y, this.p4[i].x, this.p4[i].y);
+
+				if (flattenCurve) {
+					CubicCurve2D.Double curve = new CubicCurve2D.Double(
+							i == 0 ? this.p1[i].x : this.p4[i - 1].x,
+							i == 0 ? this.p1[i].y : this.p4[i - 1].y,
+							this.p2[i].x, this.p2[i].y,
+							this.p3[i].x, this.p3[i].y,
+							this.p4[i].x, this.p4[i].y);
+					gp.append(curve.getPathIterator(null, CURVE_FLATNESS), true);
+				} else {
+					gp.curveTo(this.p2[i].x, this.p2[i].y, this.p3[i].x, this.p3[i].y, this.p4[i].x, this.p4[i].y);
+				}
 				
 				if (i == this.p1.length - 1) {
 					gp.closePath();
@@ -177,7 +195,7 @@ public class PolyBezierV2 extends ExtendedCommand {
 		this.p1 = concatArray(this.p1, polyBezierV2.getP1());
 		this.p2 = concatArray(this.p2, polyBezierV2.getP2());
 		this.p3 = concatArray(this.p3, polyBezierV2.getP3());
-		this.p4 = concatArray(this.p3, polyBezierV2.getP4());
+		this.p4 = concatArray(this.p4, polyBezierV2.getP4());
 	}
 	
 }
